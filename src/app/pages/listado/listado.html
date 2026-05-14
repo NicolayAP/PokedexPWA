@@ -1,0 +1,52 @@
+<h2>Listado de Pokémon</h2>
+<p class="text-muted">Total: {{ total }} Pokémon</p>
+
+@if (cargando) {
+  <div class="text-center py-5">
+    <div class="spinner-border text-danger"></div>
+  </div>
+}
+
+@if (!cargando) {
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-danger">
+        <tr>
+          <th>#</th>
+          <th>Imagen</th>
+          <th>Nombre</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of pokemons; track p.name) {
+          <tr>
+            <td>{{ idDesdUrl(p.url) }}</td>
+            <td>
+              <img
+                [src]="'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/' + idDesdUrl(p.url) + '.png'"
+                [alt]="p.name" width="50">
+            </td>
+            <td class="text-capitalize">{{ p.name }}</td>
+            <td>
+              <a [routerLink]="['/buscar']" [queryParams]="{ q: p.name }"
+                 class="btn btn-sm btn-outline-danger">
+                Ver detalle
+              </a>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center">
+    <button class="btn btn-danger" (click)="anterior()" [disabled]="pagina === 0">
+      ← Anterior
+    </button>
+    <span>Página {{ pagina + 1 }}</span>
+    <button class="btn btn-danger" (click)="siguiente()">
+      Siguiente →
+    </button>
+  </div>
+}

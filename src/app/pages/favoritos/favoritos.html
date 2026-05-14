@@ -1,0 +1,65 @@
+<h2>⭐ Mis Favoritos</h2>
+
+@if (favoritos.length === 0) {
+  <div class="alert alert-info">
+    No tienes Pokémon favoritos aún. ¡Ve a <strong>Buscar</strong> y agrega algunos!
+  </div>
+}
+
+@if (favoritos.length > 0) {
+  <p class="text-muted">{{ favoritos.length }} Pokémon guardados</p>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-danger">
+        <tr>
+          <th>Imagen</th>
+          <th>Nombre</th>
+          <th>Tipos</th>
+          <th>Nota</th>
+          <th>Agregado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (fav of favoritos; track fav.id) {
+          <tr>
+            <td>
+              <img [src]="fav.imagen" [alt]="fav.name" width="60">
+            </td>
+            <td class="text-capitalize fw-bold">{{ fav.name }}</td>
+            <td>
+              @for (tipo of fav.tipos; track tipo) {
+                <span class="badge bg-secondary me-1 text-capitalize">{{ tipo }}</span>
+              }
+            </td>
+            <td>
+              @if (editandoId === fav.id) {
+                <input type="text" class="form-control form-control-sm"
+                       [(ngModel)]="notaEditada" style="min-width:150px">
+              }
+              @if (editandoId !== fav.id) {
+                <span class="text-muted">{{ fav.nota || '—' }}</span>
+              }
+            </td>
+            <td><small class="text-muted">{{ fav.fechaAgregado }}</small></td>
+            <td>
+              @if (editandoId !== fav.id) {
+                <button class="btn btn-sm btn-outline-primary me-1"
+                        (click)="iniciarEdicion(fav)">✏️</button>
+                <button class="btn btn-sm btn-outline-danger"
+                        (click)="eliminar(fav.id)">🗑️</button>
+              }
+              @if (editandoId === fav.id) {
+                <button class="btn btn-sm btn-success me-1"
+                        (click)="guardarEdicion(fav.id)">✔</button>
+                <button class="btn btn-sm btn-secondary"
+                        (click)="cancelarEdicion()">✕</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
