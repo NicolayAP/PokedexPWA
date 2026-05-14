@@ -1,14 +1,17 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { PokemonDetalle, PokemonFavorito, PokemonListResponse } from '../interfaces/pokemon.interface';
+import { IndexedDbService } from './indexeddb.service';
 
 @Injectable({ providedIn: 'root' })
 export class PokemonService {
 
   private apiUrl = 'https://pokeapi.co/api/v2';
-  private favoritosKey = 'pokemon_favoritos';
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private idb: IndexedDbService
+  ) {}
 
   // ── API ──────────────────────────────────────────────
 
@@ -24,21 +27,17 @@ export class PokemonService {
     );
   }
 
-  // ── FAVORITOS (localStorage) ─────────────────────────
+  // ── FAVORITOS (IndexedDB) ────────────────────────────
 
-  getFavoritos(): PokemonFavorito[] {
-    const data = localStorage.getItem(this.favoritosKey);
-    return data ? JSON.parse(data) : [];
+  getFavoritos(): Promise<PokemonFavorito[]> {
+    return this.idb.getFavoritos();
   }
 
-  esFavorito(id: number): boolean {
-    return this.getFavoritos().some(f => f.id === id);
+  esFavorito(id: number): Promise<boolean> {
+    return this.idb.getFavoritoPorId(id).then(f => !!f);
   }
 
-  agregarFavorito(pokemon: PokemonDetalle, nota = ''): void {
-    const favoritos = this.getFavoritos();
-    if (this.esFavorito(pokemon.id)) return;
-
+  agregarFavorito(pokemon: PokemonDetalle, nota = ''): Promise<void> {
     const nuevo: PokemonFavorito = {
       id: pokemon.id,
       name: pokemon.name,
@@ -48,20 +47,14 @@ export class PokemonService {
       nota,
       fechaAgregado: new Date().toLocaleDateString('es-CO')
     };
-
-    favoritos.push(nuevo);
-    localStorage.setItem(this.favoritosKey, JSON.stringify(favoritos));
+    return this.idb.agregarFavorito(nuevo);
   }
 
-  actualizarNota(id: number, nota: string): void {
-    const favoritos = this.getFavoritos().map(f =>
-      f.id === id ? { ...f, nota } : f
-    );
-    localStorage.setItem(this.favoritosKey, JSON.stringify(favoritos));
+  actualizarNota(id: number, nota: string): Promise<void> {
+    return this.idb.actualizarNota(id, nota);
   }
 
-  eliminarFavorito(id: number): void {
-    const favoritos = this.getFavoritos().filter(f => f.id !== id);
-    localStorage.setItem(this.favoritosKey, JSON.stringify(favoritos));
+  eliminarFavorito(id: number): Promise<void> {
+    return this.idb.eliminarFavorito(id);
   }
 }

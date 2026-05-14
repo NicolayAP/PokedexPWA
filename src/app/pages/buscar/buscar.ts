@@ -44,9 +44,11 @@ export class Buscar implements OnInit {
     this.service.getPokemon(this.termino).subscribe({
       next: (p) => {
         this.pokemon = p;
-        this.agregado = this.service.esFavorito(p.id);
-        this.cargando = false;
-        this.cdr.detectChanges();
+        this.service.esFavorito(p.id).then(es => {
+          this.agregado = es;
+          this.cargando = false;
+          this.cdr.detectChanges();
+        });
       },
       error: () => {
         this.error = `No se encontró "${this.termino}". Verifica el nombre.`;
@@ -58,17 +60,17 @@ export class Buscar implements OnInit {
 
   guardarFavorito() {
     if (!this.pokemon) return;
-    this.service.agregarFavorito(this.pokemon, this.nota);
-    this.agregado = true;
-    this.nota = '';
-    this.cdr.detectChanges();
+    this.service.agregarFavorito(this.pokemon, this.nota).then(() => {
+      this.agregado = true;
+      this.nota = '';
+      this.cdr.detectChanges();
+    });
   }
 
   colorTipo(tipo: string): string {
     const colores: Record<string, string> = {
       fire: 'danger', water: 'primary', grass: 'success',
-      electric: 'warning', psychic: 'pink', ice: 'info',
-      dragon: 'purple', dark: 'dark', fairy: 'light',
+      electric: 'warning', ice: 'info', dark: 'dark',
       normal: 'secondary', fighting: 'danger', poison: 'success',
       ground: 'warning', flying: 'info', bug: 'success',
       rock: 'secondary', ghost: 'dark', steel: 'secondary'

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { PokemonService } from '../../services/pokemon.service';
@@ -15,16 +15,23 @@ export class Favoritos implements OnInit {
   editandoId: number | null = null;
   notaEditada = '';
 
-  constructor(private service: PokemonService) {}
+  constructor(
+    private service: PokemonService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() { this.cargar(); }
 
-  cargar() { this.favoritos = this.service.getFavoritos(); }
+  cargar() {
+    this.service.getFavoritos().then(favs => {
+      this.favoritos = favs;
+      this.cdr.detectChanges();
+    });
+  }
 
   eliminar(id: number) {
     if (confirm('¿Eliminar este Pokémon de favoritos?')) {
-      this.service.eliminarFavorito(id);
-      this.cargar();
+      this.service.eliminarFavorito(id).then(() => this.cargar());
     }
   }
 
@@ -34,9 +41,10 @@ export class Favoritos implements OnInit {
   }
 
   guardarEdicion(id: number) {
-    this.service.actualizarNota(id, this.notaEditada);
-    this.editandoId = null;
-    this.cargar();
+    this.service.actualizarNota(id, this.notaEditada).then(() => {
+      this.editandoId = null;
+      this.cargar();
+    });
   }
 
   cancelarEdicion() { this.editandoId = null; }
