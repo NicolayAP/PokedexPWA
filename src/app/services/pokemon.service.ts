@@ -45,7 +45,9 @@ export class PokemonService {
            || pokemon.sprites.front_default,
       tipos: pokemon.types.map(t => t.type.name),
       nota,
-      fechaAgregado: new Date().toLocaleDateString('es-CO')
+      // FIX #6: Guardar en ISO 8601 para consistencia entre navegadores.
+      // Para mostrar en formato local, formatear en el componente o pipe.
+      fechaAgregado: new Date().toISOString()
     };
     return this.idb.agregarFavorito(nuevo);
   }

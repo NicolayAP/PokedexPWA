@@ -18,6 +18,8 @@ export class Buscar implements OnInit {
   cargando = false;
   error = '';
   agregado = false;
+  // FIX: Estado para mostrar feedback mientras se guarda en IndexedDB
+  guardando = false;
 
   constructor(
     private service: PokemonService,
@@ -48,6 +50,11 @@ export class Buscar implements OnInit {
           this.agregado = es;
           this.cargando = false;
           this.cdr.detectChanges();
+        }).catch(() => {
+          // FIX: Si falla la consulta a IndexedDB, no bloquear la UI
+          this.agregado = false;
+          this.cargando = false;
+          this.cdr.detectChanges();
         });
       },
       error: () => {
@@ -59,12 +66,23 @@ export class Buscar implements OnInit {
   }
 
   guardarFavorito() {
-    if (!this.pokemon) return;
-    this.service.agregarFavorito(this.pokemon, this.nota).then(() => {
-      this.agregado = true;
-      this.nota = '';
-      this.cdr.detectChanges();
-    });
+    if (!this.pokemon || this.guardando) return;
+    this.guardando = true;
+
+    this.service.agregarFavorito(this.pokemon, this.nota)
+      .then(() => {
+        // FIX: Solo marcar como agregado cuando oncomplete confirma el guardado
+        this.agregado = true;
+        this.nota = '';
+        this.guardando = false;
+        this.cdr.detectChanges();
+      })
+      .catch((err) => {
+        // FIX: Mostrar error real al usuario si IndexedDB falla
+        this.error = `Error al guardar en favoritos: ${err?.message || 'Error desconocido'}`;
+        this.guardando = false;
+        this.cdr.detectChanges();
+      });
   }
 
   colorTipo(tipo: string): string {

@@ -11,12 +11,19 @@ export class IndexedDbService {
 
   abrirDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
+      // Si ya hay una conexión abierta y válida, reutilizarla
       if (this.db) {
         resolve(this.db);
         return;
       }
 
       const request = indexedDB.open(this.dbName, this.version);
+
+      // FIX #3: Manejar onblocked para evitar que la app se congele
+      // cuando otra pestaña tiene la DB abierta en una versión anterior.
+      request.onblocked = () => {
+        reject(new Error('La base de datos está bloqueada por otra pestaña. Ciérrala y recarga.'));
+      };
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
@@ -29,6 +36,20 @@ export class IndexedDbService {
 
       request.onsuccess = (event) => {
         this.db = (event.target as IDBOpenDBRequest).result;
+
+        // FIX #2: Escuchar onversionchange para invalidar el caché de this.db
+        // si otra pestaña abre una versión más nueva de la DB.
+        this.db.onversionchange = () => {
+          this.db?.close();
+          this.db = null;
+          console.warn('La base de datos fue actualizada en otra pestaña. Recarga la página.');
+        };
+
+        // FIX #2: Limpiar la referencia si la conexión se cierra inesperadamente
+        this.db.onclose = () => {
+          this.db = null;
+        };
+
         resolve(this.db);
       };
 
@@ -67,9 +88,16 @@ export class IndexedDbService {
       return new Promise((resolve, reject) => {
         const tx = db.transaction(this.storeName, 'readwrite');
         const store = tx.objectStore(this.storeName);
-        const request = store.add(pokemon);
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+
+        // FIX #5: Usar put() en lugar de add() para evitar ConstraintError
+        // si el Pokémon ya existe. put() actúa como upsert (insert o update).
+        store.put(pokemon);
+
+        // FIX #1: Resolver en tx.oncomplete, no en request.onsuccess.
+        // oncomplete garantiza que los datos fueron confirmados en disco.
+        tx.oncomplete = () => resolve();
+        tx.onerror   = () => reject(tx.error);
+        tx.onabort   = () => reject(new Error('Transacción abortada al agregar favorito'));
       });
     });
   }
@@ -80,18 +108,27 @@ export class IndexedDbService {
         const tx = db.transaction(this.storeName, 'readwrite');
         const store = tx.objectStore(this.storeName);
         const getRequest = store.get(id);
+
         getRequest.onsuccess = () => {
           const fav = getRequest.result;
-          if (fav) {
-            fav.nota = nota;
-            const putRequest = store.put(fav);
-            putRequest.onsuccess = () => resolve();
-            putRequest.onerror = () => reject(putRequest.error);
-          } else {
-            resolve();
+
+          // FIX #4: Rechazar si el registro no existe en lugar de resolver silenciosamente
+          if (!fav) {
+            tx.abort();
+            reject(new Error(`No se encontró el favorito con id ${id}`));
+            return;
           }
+
+          fav.nota = nota;
+          store.put(fav);
         };
+
         getRequest.onerror = () => reject(getRequest.error);
+
+        // FIX #1: Confirmar en oncomplete
+        tx.oncomplete = () => resolve();
+        tx.onerror    = () => reject(tx.error);
+        tx.onabort    = () => reject(new Error('Transacción abortada al actualizar nota'));
       });
     });
   }
@@ -101,9 +138,12 @@ export class IndexedDbService {
       return new Promise((resolve, reject) => {
         const tx = db.transaction(this.storeName, 'readwrite');
         const store = tx.objectStore(this.storeName);
-        const request = store.delete(id);
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+        store.delete(id);
+
+        // FIX #1: Confirmar en oncomplete
+        tx.oncomplete = () => resolve();
+        tx.onerror    = () => reject(tx.error);
+        tx.onabort    = () => reject(new Error('Transacción abortada al eliminar favorito'));
       });
     });
   }
